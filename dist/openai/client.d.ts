@@ -18,6 +18,11 @@ export interface PRContext {
     headBranch: string;
     author: string;
 }
+export interface InlineComment {
+    filename: string;
+    line: number;
+    comment: string;
+}
 export declare class OpenAIReviewer {
     private client;
     private config;
@@ -26,6 +31,14 @@ export declare class OpenAIReviewer {
     private buildPrompt;
     private getSystemPrompt;
     private buildUserPrompt;
+    reviewPRWithInlineComments(context: PRContext): Promise<{
+        generalReview: string;
+        inlineComments: InlineComment[];
+    }>;
+    private generateInlineComments;
+    private analyzeFileForInlineComments;
+    private parseInlineComments;
+    handleInteractiveQuery(userRequest: string, storedContext: PRContext | null): Promise<string>;
     testConnection(): Promise<boolean>;
 }
 //# sourceMappingURL=client.d.ts.map

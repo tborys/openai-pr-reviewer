@@ -45,7 +45,7 @@ jobs:
 
 | Input | Description | Default |
 |-------|-------------|---------|
-| `model` | OpenAI model to use (`gpt-4o`, `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`) | `gpt-4o` |
+| `model` | OpenAI model to use (`gpt-4o`, `gpt-4o-mini`, `gpt-4`, `gpt-4-turbo`) | `gpt-4o-mini` |
 | `review_type` | Type of review (`comprehensive`, `security`, `performance`, `style`) | `comprehensive` |
 | `max_files` | Maximum number of files to review | `10` |
 | `exclude_patterns` | Comma-separated file patterns to exclude | `*.json,*.md,*.txt,*.lock,*.svg,*.png,*.jpg,*.gif` |
@@ -115,7 +115,7 @@ Costs depend on:
 - Max tokens configuration
 
 ### 💡 Cost Optimization Tips
-- Use `gpt-3.5-turbo` for routine reviews (10-50x cheaper than GPT-4)
+- Use `gpt-4o-mini` for routine reviews (best cost/performance ratio with 128k context)
 - Set appropriate `max_files` limits to control token usage
 - Exclude non-essential files with `exclude_patterns`
 - Monitor usage via OpenAI dashboard
@@ -139,7 +139,7 @@ See this action in use: [WIC Repository PR #770](https://github.com/tborys/worki
   with:
     openai_api_key: ${{ secrets.OPENAI_API_KEY }}
     github_token: ${{ secrets.GITHUB_TOKEN }}
-    model: 'gpt-3.5-turbo'  # Cost-optimized
+    model: 'gpt-4o-mini'  # Best cost-performance ratio
     review_type: 'comprehensive'
     max_files: 15
 ```
