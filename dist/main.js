@@ -175,8 +175,8 @@ function validateInputs() {
             throw new Error(`Missing required input: ${input}`);
         }
     }
-    const model = core.getInput('model') || 'gpt-4o';
-    const supportedModels = ['gpt-4', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+    const model = core.getInput('model') || 'gpt-4o-mini';
+    const supportedModels = ['gpt-4', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
     if (!supportedModels.includes(model)) {
         core.warning(`Unsupported model: ${model}. Supported models: ${supportedModels.join(', ')}`);
     }
