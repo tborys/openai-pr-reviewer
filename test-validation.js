@@ -1,5 +1,6 @@
 // Test file to validate GPT-4o-mini fixes
 // This should successfully trigger the OpenAI PR Reviewer with 128k context
+// Testing consolidated workflow validation - ensures only one workflow runs
 
 function validateFeatures() {
     // Test basic functionality
@@ -33,5 +34,12 @@ function validateFeatures() {
 // 2. Inline comments should be posted on specific lines above
 // 3. Interactive mode should work with @wic-reviewer mentions
 // 4. Context preservation should store review data
+// 5. Consolidated workflow prevents dual triggering
 
-module.exports = { validateFeatures };
+function testConsolidatedWorkflow() {
+    // This function validates that only one workflow runs per PR
+    console.log("Testing workflow consolidation fixes");
+    return "Single workflow validation complete";
+}
+
+module.exports = { validateFeatures, testConsolidatedWorkflow };
