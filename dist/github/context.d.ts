@@ -1,6 +1,8 @@
 import { PRContext } from '../openai/client';
 export interface GitHubConfig {
-    token: string;
+    appId: string;
+    appPrivateKey: string;
+    appInstallationId: string;
     owner: string;
     repo: string;
     pullNumber: number;
@@ -9,7 +11,7 @@ export declare class GitHubPRAnalyzer {
     private octokit;
     private config;
     constructor(config: GitHubConfig);
-    static fromContext(token: string): GitHubPRAnalyzer;
+    static fromContext(appId: string, appPrivateKey: string, appInstallationId: string): GitHubPRAnalyzer;
     getPRContext(maxFiles?: number, excludePatterns?: string[]): Promise<PRContext>;
     postReview(review: string): Promise<void>;
     postComment(comment: string): Promise<void>;

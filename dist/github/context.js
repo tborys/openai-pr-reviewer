@@ -2,22 +2,33 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GitHubPRAnalyzer = void 0;
 const github_1 = require("@actions/github");
-const github_2 = require("@actions/github");
+const auth_app_1 = require("@octokit/auth-app");
+const rest_1 = require("@octokit/rest");
 class GitHubPRAnalyzer {
     constructor(config) {
         this.config = config;
-        this.octokit = (0, github_1.getOctokit)(config.token);
+        // Create GitHub App authentication
+        const auth = (0, auth_app_1.createAppAuth)({
+            appId: config.appId,
+            privateKey: config.appPrivateKey,
+            installationId: config.appInstallationId,
+        });
+        this.octokit = new rest_1.Octokit({
+            auth,
+        });
     }
-    static fromContext(token) {
-        const payload = github_2.context.payload;
+    static fromContext(appId, appPrivateKey, appInstallationId) {
+        const payload = github_1.context.payload;
         const pullRequest = payload.pull_request;
         if (!pullRequest) {
             throw new Error('This action must be triggered by a pull request event');
         }
         return new GitHubPRAnalyzer({
-            token,
-            owner: github_2.context.repo.owner,
-            repo: github_2.context.repo.repo,
+            appId,
+            appPrivateKey,
+            appInstallationId,
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
             pullNumber: pullRequest.number,
         });
     }

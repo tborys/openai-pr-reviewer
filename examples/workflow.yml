@@ -18,7 +18,9 @@ jobs:
         uses: tborys/openai-pr-reviewer@v1
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          app_id: ${{ secrets.WIC_APP_ID }}
+          app_private_key: ${{ secrets.WIC_APP_PRIVATE_KEY }}
+          app_installation_id: ${{ secrets.WIC_APP_INSTALLATION_ID }}
           model: 'gpt-4o'
           review_type: 'comprehensive'
           max_files: 15
@@ -34,7 +36,9 @@ jobs:
         uses: tborys/openai-pr-reviewer@v1
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          app_id: ${{ secrets.WIC_APP_ID }}
+          app_private_key: ${{ secrets.WIC_APP_PRIVATE_KEY }}
+          app_installation_id: ${{ secrets.WIC_APP_INSTALLATION_ID }}
           model: 'gpt-4'
           review_type: 'security'
           max_files: 20
@@ -49,7 +53,9 @@ jobs:
         uses: tborys/openai-pr-reviewer@v1
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          app_id: ${{ secrets.WIC_APP_ID }}
+          app_private_key: ${{ secrets.WIC_APP_PRIVATE_KEY }}
+          app_installation_id: ${{ secrets.WIC_APP_INSTALLATION_ID }}
           model: 'gpt-4o'
           review_type: 'performance'
           max_tokens: 6000
@@ -64,7 +70,9 @@ jobs:
         uses: tborys/openai-pr-reviewer@v1
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          app_id: ${{ secrets.WIC_APP_ID }}
+          app_private_key: ${{ secrets.WIC_APP_PRIVATE_KEY }}
+          app_installation_id: ${{ secrets.WIC_APP_INSTALLATION_ID }}
           model: 'gpt-4o-mini'
           review_type: 'style'
           exclude_patterns: '*.json,*.md,*.txt,*.lock,*.svg,*.png,*.jpg,*.gif,*.test.js,*.spec.js'

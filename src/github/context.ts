@@ -1,24 +1,37 @@
-import { getOctokit } from '@actions/github';
 import { context } from '@actions/github';
+import { createAppAuth } from '@octokit/auth-app';
+import { Octokit } from '@octokit/rest';
 import { PRContext } from '../openai/client';
 
 export interface GitHubConfig {
-  token: string;
+  appId: string;
+  appPrivateKey: string;
+  appInstallationId: string;
   owner: string;
   repo: string;
   pullNumber: number;
 }
 
 export class GitHubPRAnalyzer {
-  private octokit: ReturnType<typeof getOctokit>;
+  private octokit: Octokit;
   private config: GitHubConfig;
 
   constructor(config: GitHubConfig) {
     this.config = config;
-    this.octokit = getOctokit(config.token);
+    
+    // Create GitHub App authentication
+    const auth = createAppAuth({
+      appId: config.appId,
+      privateKey: config.appPrivateKey,
+      installationId: config.appInstallationId,
+    });
+
+    this.octokit = new Octokit({
+      auth,
+    });
   }
 
-  static fromContext(token: string): GitHubPRAnalyzer {
+  static fromContext(appId: string, appPrivateKey: string, appInstallationId: string): GitHubPRAnalyzer {
     const payload = context.payload;
     const pullRequest = payload.pull_request;
     
@@ -27,7 +40,9 @@ export class GitHubPRAnalyzer {
     }
 
     return new GitHubPRAnalyzer({
-      token,
+      appId,
+      appPrivateKey,
+      appInstallationId,
       owner: context.repo.owner,
       repo: context.repo.repo,
       pullNumber: pullRequest.number,

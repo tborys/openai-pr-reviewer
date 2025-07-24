@@ -10,10 +10,15 @@ inputs:
     description: 'OpenAI model to use'
     required: false
     default: 'gpt-4o-mini'
-  github_token:
-    description: 'GitHub token for API access'
+  app_id:
+    description: 'GitHub App ID'
     required: true
-    default: ${{ github.token }}
+  app_private_key:
+    description: 'GitHub App private key'
+    required: true
+  app_installation_id:
+    description: 'GitHub App installation ID'
+    required: true
   review_type:
     description: 'Type of review: comprehensive, security, performance, style'
     required: false
