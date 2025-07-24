@@ -26,9 +26,7 @@ jobs:
         uses: ./
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          app_id: ${{ secrets.WIC_APP_ID }}
-          app_private_key: ${{ secrets.WIC_APP_PRIVATE_KEY }}
-          app_installation_id: ${{ secrets.WIC_APP_INSTALLATION_ID }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           model: 'gpt-4o-mini'  # Updated to use GPT-4o-mini with 128k context
           review_type: 'comprehensive'
           max_files: 10

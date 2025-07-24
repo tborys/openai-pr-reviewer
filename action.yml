@@ -6,19 +6,13 @@ inputs:
   openai_api_key:
     description: 'OpenAI API key'
     required: true
+  github_token:
+    description: 'GitHub token for API access'
+    required: true
   model:
     description: 'OpenAI model to use'
     required: false
     default: 'gpt-4o-mini'
-  app_id:
-    description: 'GitHub App ID'
-    required: true
-  app_private_key:
-    description: 'GitHub App private key'
-    required: true
-  app_installation_id:
-    description: 'GitHub App installation ID'
-    required: true
   review_type:
     description: 'Type of review: comprehensive, security, performance, style'
     required: false

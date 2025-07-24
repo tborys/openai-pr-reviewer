@@ -7,9 +7,7 @@ async function run(): Promise<void> {
   try {
     // Get inputs from GitHub Action
     const openaiApiKey = core.getInput('openai_api_key', { required: true });
-    const appId = core.getInput('app_id', { required: true });
-    const appPrivateKey = core.getInput('app_private_key', { required: true });
-    const appInstallationId = core.getInput('app_installation_id', { required: true });
+    const githubToken = core.getInput('github_token', { required: true });
     const model = core.getInput('model') || 'gpt-4o-mini';
     const reviewType = core.getInput('review_type') as ReviewConfig['reviewType'] || 'comprehensive';
     const maxFiles = parseInt(core.getInput('max_files') || '10', 10);
@@ -24,7 +22,7 @@ async function run(): Promise<void> {
     const isInteractiveMode = context.eventName === 'issue_comment';
     
     if (isInteractiveMode) {
-      await handleInteractiveMode(openaiApiKey, appId, appPrivateKey, appInstallationId, model, reviewType, maxTokens);
+      await handleInteractiveMode(openaiApiKey, githubToken, model, reviewType, maxTokens);
       return;
     }
 
@@ -49,7 +47,7 @@ async function run(): Promise<void> {
     core.info('OpenAI connection successful');
 
     // Initialize GitHub analyzer
-    const githubAnalyzer = GitHubPRAnalyzer.fromContext(appId, appPrivateKey, appInstallationId);
+    const githubAnalyzer = GitHubPRAnalyzer.fromContext(githubToken);
 
     // Check if we've already reviewed this PR
     const existingReview = await githubAnalyzer.checkExistingReviews();
@@ -102,9 +100,7 @@ async function run(): Promise<void> {
 
 async function handleInteractiveMode(
   openaiApiKey: string, 
-  appId: string,
-  appPrivateKey: string,
-  appInstallationId: string,
+  githubToken: string,
   model: string, 
   reviewType: string, 
   maxTokens: number
@@ -133,7 +129,7 @@ async function handleInteractiveMode(
     reviewType: reviewType as ReviewConfig['reviewType']
   });
 
-  const githubAnalyzer = GitHubPRAnalyzer.fromInteractiveContext(appId, appPrivateKey, appInstallationId);
+  const githubAnalyzer = GitHubPRAnalyzer.fromInteractiveContext(githubToken);
   
   // Extract the user's question/request
   const userRequest = comment.replace('@wic-reviewer', '').trim();
@@ -173,7 +169,7 @@ ${review}
 }
 
 function validateInputs(): void {
-  const requiredInputs = ['openai_api_key', 'app_id', 'app_private_key', 'app_installation_id'];
+  const requiredInputs = ['openai_api_key', 'github_token'];
   
   for (const input of requiredInputs) {
     if (!core.getInput(input)) {

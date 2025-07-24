@@ -1,44 +1,24 @@
+import { getOctokit } from '@actions/github';
 import { context } from '@actions/github';
-import { createAppAuth } from '@octokit/auth-app';
-import { Octokit } from '@octokit/rest';
 import { PRContext } from '../openai/client';
 
 export interface GitHubConfig {
-  appId: number;
-  appPrivateKey: string;
-  appInstallationId: number;
+  token: string;
   owner: string;
   repo: string;
   pullNumber: number;
 }
 
 export class GitHubPRAnalyzer {
-  private octokit: Octokit;
+  private octokit: ReturnType<typeof getOctokit>;
   private config: GitHubConfig;
 
   constructor(config: GitHubConfig) {
     this.config = config;
-    
-    console.log('GitHub App Config:', {
-      appId: config.appId,
-      hasPrivateKey: !!config.appPrivateKey,
-      installationId: config.appInstallationId,
-      privateKeyPrefix: config.appPrivateKey?.substring(0, 50)
-    });
-    
-    // Create GitHub App authentication
-    const auth = createAppAuth({
-      appId: config.appId,
-      privateKey: config.appPrivateKey,
-      installationId: config.appInstallationId,
-    });
-
-    this.octokit = new Octokit({
-      auth,
-    });
+    this.octokit = getOctokit(config.token);
   }
 
-  static fromContext(appId: string, appPrivateKey: string, appInstallationId: string): GitHubPRAnalyzer {
+  static fromContext(token: string): GitHubPRAnalyzer {
     const payload = context.payload;
     const pullRequest = payload.pull_request;
     
@@ -47,26 +27,15 @@ export class GitHubPRAnalyzer {
     }
 
     return new GitHubPRAnalyzer({
-      appId: parseInt(appId, 10),
-      appPrivateKey,
-      appInstallationId: parseInt(appInstallationId, 10),
+      token,
       owner: context.repo.owner,
       repo: context.repo.repo,
       pullNumber: pullRequest.number,
     });
   }
 
-  static fromInteractiveContext(appId: string, appPrivateKey: string, appInstallationId: string): GitHubPRAnalyzer {
+  static fromInteractiveContext(token: string): GitHubPRAnalyzer {
     const payload = context.payload;
-    
-    console.log('Interactive Context Debug:', {
-      eventName: context.eventName,
-      hasIssue: !!payload.issue,
-      hasPullRequest: !!payload.pull_request,
-      issueHasPR: !!payload.issue?.pull_request,
-      issueNumber: payload.issue?.number,
-      prNumber: payload.pull_request?.number
-    });
     
     // For issue_comment events, get PR info from the issue
     let pullNumber: number;
@@ -75,14 +44,11 @@ export class GitHubPRAnalyzer {
     } else if (payload.pull_request) {
       pullNumber = payload.pull_request.number;
     } else {
-      console.error('Context payload:', JSON.stringify(payload, null, 2));
       throw new Error('This action must be triggered by a pull request or issue comment on a PR');
     }
 
     return new GitHubPRAnalyzer({
-      appId: parseInt(appId, 10),
-      appPrivateKey,
-      appInstallationId: parseInt(appInstallationId, 10),
+      token,
       owner: context.repo.owner,
       repo: context.repo.repo,
       pullNumber,

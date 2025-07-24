@@ -2,52 +2,27 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GitHubPRAnalyzer = void 0;
 const github_1 = require("@actions/github");
-const auth_app_1 = require("@octokit/auth-app");
-const rest_1 = require("@octokit/rest");
+const github_2 = require("@actions/github");
 class GitHubPRAnalyzer {
     constructor(config) {
         this.config = config;
-        console.log('GitHub App Config:', {
-            appId: config.appId,
-            hasPrivateKey: !!config.appPrivateKey,
-            installationId: config.appInstallationId,
-            privateKeyPrefix: config.appPrivateKey?.substring(0, 50)
-        });
-        // Create GitHub App authentication
-        const auth = (0, auth_app_1.createAppAuth)({
-            appId: config.appId,
-            privateKey: config.appPrivateKey,
-            installationId: config.appInstallationId,
-        });
-        this.octokit = new rest_1.Octokit({
-            auth,
-        });
+        this.octokit = (0, github_1.getOctokit)(config.token);
     }
-    static fromContext(appId, appPrivateKey, appInstallationId) {
-        const payload = github_1.context.payload;
+    static fromContext(token) {
+        const payload = github_2.context.payload;
         const pullRequest = payload.pull_request;
         if (!pullRequest) {
             throw new Error('This action must be triggered by a pull request event');
         }
         return new GitHubPRAnalyzer({
-            appId: parseInt(appId, 10),
-            appPrivateKey,
-            appInstallationId: parseInt(appInstallationId, 10),
-            owner: github_1.context.repo.owner,
-            repo: github_1.context.repo.repo,
+            token,
+            owner: github_2.context.repo.owner,
+            repo: github_2.context.repo.repo,
             pullNumber: pullRequest.number,
         });
     }
-    static fromInteractiveContext(appId, appPrivateKey, appInstallationId) {
-        const payload = github_1.context.payload;
-        console.log('Interactive Context Debug:', {
-            eventName: github_1.context.eventName,
-            hasIssue: !!payload.issue,
-            hasPullRequest: !!payload.pull_request,
-            issueHasPR: !!payload.issue?.pull_request,
-            issueNumber: payload.issue?.number,
-            prNumber: payload.pull_request?.number
-        });
+    static fromInteractiveContext(token) {
+        const payload = github_2.context.payload;
         // For issue_comment events, get PR info from the issue
         let pullNumber;
         if (payload.issue?.pull_request) {
@@ -57,15 +32,12 @@ class GitHubPRAnalyzer {
             pullNumber = payload.pull_request.number;
         }
         else {
-            console.error('Context payload:', JSON.stringify(payload, null, 2));
             throw new Error('This action must be triggered by a pull request or issue comment on a PR');
         }
         return new GitHubPRAnalyzer({
-            appId: parseInt(appId, 10),
-            appPrivateKey,
-            appInstallationId: parseInt(appInstallationId, 10),
-            owner: github_1.context.repo.owner,
-            repo: github_1.context.repo.repo,
+            token,
+            owner: github_2.context.repo.owner,
+            repo: github_2.context.repo.repo,
             pullNumber,
         });
     }
