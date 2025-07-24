@@ -134,11 +134,23 @@ async function handleInteractiveMode(
   // Extract the user's question/request
   const userRequest = comment.replace('@wic-reviewer', '').trim();
   
-  // Load stored context to reduce API costs
-  const storedContext = await githubAnalyzer.loadReviewContext();
+  // Load stored context to reduce API costs, or fetch fresh context if none exists
+  let prContext = await githubAnalyzer.loadReviewContext();
   
-  // Generate response based on user request and stored context
-  const response = await reviewer.handleInteractiveQuery(userRequest, storedContext);
+  if (!prContext) {
+    core.info('No stored context found, fetching fresh PR context for interactive mode');
+    // Get the same inputs as the main workflow
+    const maxFiles = parseInt(core.getInput('max_files') || '10', 10);
+    const excludePatterns = core.getInput('exclude_patterns')
+      .split(',')
+      .map(pattern => pattern.trim())
+      .filter(pattern => pattern.length > 0);
+    
+    prContext = await githubAnalyzer.getPRContext(maxFiles, excludePatterns);
+  }
+  
+  // Generate response based on user request and PR context
+  const response = await reviewer.handleInteractiveQuery(userRequest, prContext);
   
   // Post response as a comment reply
   await githubAnalyzer.postComment(`## 🤖 Interactive Response
