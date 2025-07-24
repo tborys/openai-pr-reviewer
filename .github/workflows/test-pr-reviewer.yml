@@ -20,7 +20,8 @@ jobs:
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          model: 'gpt-3.5-turbo'  # Using cheaper model for testing
+          model: 'gpt-4o-mini'  # Best cost/performance ratio with 128k context
           review_type: 'comprehensive'
           max_files: 5
           max_tokens: 2000
+          exclude_patterns: '*.txt,*.lock,*.svg,*.png,*.jpg,*.gif,dist/*,*.d.ts,*.js.map'
