@@ -8,7 +8,7 @@ async function run(): Promise<void> {
     // Get inputs from GitHub Action
     const openaiApiKey = core.getInput('openai_api_key', { required: true });
     const githubToken = core.getInput('github_token', { required: true });
-    const model = core.getInput('model') || 'gpt-4o';
+    const model = core.getInput('model') || 'gpt-4o-mini';
     const reviewType = core.getInput('review_type') as ReviewConfig['reviewType'] || 'comprehensive';
     const maxFiles = parseInt(core.getInput('max_files') || '10', 10);
     const excludePatterns = core.getInput('exclude_patterns')
