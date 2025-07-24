@@ -59,6 +59,15 @@ export class GitHubPRAnalyzer {
   static fromInteractiveContext(appId: string, appPrivateKey: string, appInstallationId: string): GitHubPRAnalyzer {
     const payload = context.payload;
     
+    console.log('Interactive Context Debug:', {
+      eventName: context.eventName,
+      hasIssue: !!payload.issue,
+      hasPullRequest: !!payload.pull_request,
+      issueHasPR: !!payload.issue?.pull_request,
+      issueNumber: payload.issue?.number,
+      prNumber: payload.pull_request?.number
+    });
+    
     // For issue_comment events, get PR info from the issue
     let pullNumber: number;
     if (payload.issue?.pull_request) {
@@ -66,6 +75,7 @@ export class GitHubPRAnalyzer {
     } else if (payload.pull_request) {
       pullNumber = payload.pull_request.number;
     } else {
+      console.error('Context payload:', JSON.stringify(payload, null, 2));
       throw new Error('This action must be triggered by a pull request or issue comment on a PR');
     }
 
