@@ -134,22 +134,75 @@ class GitHubPRAnalyzer {
             review.body?.includes('🤖 OpenAI PR Review'));
     }
     async postInlineComments(inlineComments) {
-        const reviewComments = inlineComments.map(comment => ({
+        // Get the PR files to validate line numbers against actual diff
+        const { data: files } = await this.octokit.rest.pulls.listFiles({
+            owner: this.config.owner,
+            repo: this.config.repo,
+            pull_number: this.config.pullNumber,
+        });
+        // Create a map of valid line numbers for each file
+        const validLines = new Map();
+        for (const file of files) {
+            if (file.patch) {
+                const lineNumbers = this.extractDiffLineNumbers(file.patch);
+                validLines.set(file.filename, lineNumbers);
+            }
+        }
+        // Filter comments to only include valid line numbers
+        const validComments = inlineComments.filter(comment => {
+            const fileValidLines = validLines.get(comment.filename);
+            const isValid = fileValidLines && fileValidLines.has(comment.line);
+            if (!isValid) {
+                console.warn(`Skipping inline comment for ${comment.filename}:${comment.line} - line not in diff`);
+            }
+            return isValid;
+        });
+        if (validComments.length === 0) {
+            console.info('No valid inline comments to post - all line numbers were outside the diff');
+            return;
+        }
+        const reviewComments = validComments.map(comment => ({
             path: comment.filename,
             line: comment.line,
             body: comment.comment,
             side: 'RIGHT',
         }));
-        if (reviewComments.length > 0) {
-            await this.octokit.rest.pulls.createReview({
-                owner: this.config.owner,
-                repo: this.config.repo,
-                pull_number: this.config.pullNumber,
-                body: '🤖 OpenAI PR Review - Inline Comments',
-                event: 'COMMENT',
-                comments: reviewComments,
-            });
+        await this.octokit.rest.pulls.createReview({
+            owner: this.config.owner,
+            repo: this.config.repo,
+            pull_number: this.config.pullNumber,
+            body: `🤖 OpenAI PR Review - Inline Comments (${reviewComments.length} comments)`,
+            event: 'COMMENT',
+            comments: reviewComments,
+        });
+    }
+    extractDiffLineNumbers(patch) {
+        const lineNumbers = new Set();
+        const lines = patch.split('\n');
+        let currentRightLine = 0;
+        for (const line of lines) {
+            // Parse hunk headers like @@ -1,4 +1,6 @@
+            const hunkMatch = line.match(/^@@ -\d+,?\d* \+(\d+),?\d* @@/);
+            if (hunkMatch) {
+                currentRightLine = parseInt(hunkMatch[1], 10);
+                continue;
+            }
+            // Track line numbers for added and context lines (not deleted lines)
+            if (line.startsWith('+')) {
+                lineNumbers.add(currentRightLine);
+                currentRightLine++;
+            }
+            else if (line.startsWith(' ')) {
+                // Context line
+                lineNumbers.add(currentRightLine);
+                currentRightLine++;
+            }
+            else if (line.startsWith('-')) {
+                // Deleted line - don't increment right line number
+                continue;
+            }
         }
+        return lineNumbers;
     }
     async storeReviewContext(context) {
         // Store context as a comment with a special marker for future retrieval

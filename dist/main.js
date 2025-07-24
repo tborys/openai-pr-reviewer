@@ -186,8 +186,18 @@ Based on this review, here are the key items to address:
 *Check off items as you address them in subsequent commits.*`;
         // Post inline comments if any were generated
         if (inlineComments.length > 0) {
-            core.info(`Posting ${inlineComments.length} inline comments for comprehensive review`);
-            await githubAnalyzer.postInlineComments(inlineComments);
+            core.info(`Attempting to post ${inlineComments.length} inline comments for comprehensive review`);
+            try {
+                await githubAnalyzer.postInlineComments(inlineComments);
+                core.info('Inline comments posted successfully');
+            }
+            catch (error) {
+                core.warning(`Failed to post inline comments: ${error}`);
+                core.info('Comprehensive review will continue without inline comments');
+            }
+        }
+        else {
+            core.info('No inline comments generated for this review');
         }
     }
     else {

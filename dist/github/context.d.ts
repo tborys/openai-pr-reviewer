@@ -22,6 +22,7 @@ export declare class GitHubPRAnalyzer {
         line: number;
         comment: string;
     }>): Promise<void>;
+    private extractDiffLineNumbers;
     storeReviewContext(context: PRContext): Promise<void>;
     loadReviewContext(): Promise<PRContext | null>;
 }
