@@ -12,6 +12,7 @@ export declare class GitHubPRAnalyzer {
     private config;
     constructor(config: GitHubConfig);
     static fromContext(appId: string, appPrivateKey: string, appInstallationId: string): GitHubPRAnalyzer;
+    static fromInteractiveContext(appId: string, appPrivateKey: string, appInstallationId: string): GitHubPRAnalyzer;
     getPRContext(maxFiles?: number, excludePatterns?: string[]): Promise<PRContext>;
     postReview(review: string): Promise<void>;
     postComment(comment: string): Promise<void>;

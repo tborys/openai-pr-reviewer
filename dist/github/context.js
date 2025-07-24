@@ -38,6 +38,28 @@ class GitHubPRAnalyzer {
             pullNumber: pullRequest.number,
         });
     }
+    static fromInteractiveContext(appId, appPrivateKey, appInstallationId) {
+        const payload = github_1.context.payload;
+        // For issue_comment events, get PR info from the issue
+        let pullNumber;
+        if (payload.issue?.pull_request) {
+            pullNumber = payload.issue.number;
+        }
+        else if (payload.pull_request) {
+            pullNumber = payload.pull_request.number;
+        }
+        else {
+            throw new Error('This action must be triggered by a pull request or issue comment on a PR');
+        }
+        return new GitHubPRAnalyzer({
+            appId: parseInt(appId, 10),
+            appPrivateKey,
+            appInstallationId: parseInt(appInstallationId, 10),
+            owner: github_1.context.repo.owner,
+            repo: github_1.context.repo.repo,
+            pullNumber,
+        });
+    }
     async getPRContext(maxFiles = 10, excludePatterns = []) {
         const { data: pullRequest } = await this.octokit.rest.pulls.get({
             owner: this.config.owner,

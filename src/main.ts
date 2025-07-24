@@ -133,7 +133,7 @@ async function handleInteractiveMode(
     reviewType: reviewType as ReviewConfig['reviewType']
   });
 
-  const githubAnalyzer = GitHubPRAnalyzer.fromContext(appId, appPrivateKey, appInstallationId);
+  const githubAnalyzer = GitHubPRAnalyzer.fromInteractiveContext(appId, appPrivateKey, appInstallationId);
   
   // Extract the user's question/request
   const userRequest = comment.replace('@wic-reviewer', '').trim();

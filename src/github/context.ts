@@ -56,6 +56,29 @@ export class GitHubPRAnalyzer {
     });
   }
 
+  static fromInteractiveContext(appId: string, appPrivateKey: string, appInstallationId: string): GitHubPRAnalyzer {
+    const payload = context.payload;
+    
+    // For issue_comment events, get PR info from the issue
+    let pullNumber: number;
+    if (payload.issue?.pull_request) {
+      pullNumber = payload.issue.number;
+    } else if (payload.pull_request) {
+      pullNumber = payload.pull_request.number;
+    } else {
+      throw new Error('This action must be triggered by a pull request or issue comment on a PR');
+    }
+
+    return new GitHubPRAnalyzer({
+      appId: parseInt(appId, 10),
+      appPrivateKey,
+      appInstallationId: parseInt(appInstallationId, 10),
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pullNumber,
+    });
+  }
+
   async getPRContext(maxFiles: number = 10, excludePatterns: string[] = []): Promise<PRContext> {
     const { data: pullRequest } = await this.octokit.rest.pulls.get({
       owner: this.config.owner,

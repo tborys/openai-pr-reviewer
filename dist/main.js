@@ -138,7 +138,7 @@ async function handleInteractiveMode(openaiApiKey, appId, appPrivateKey, appInst
         temperature: 0.1,
         reviewType: reviewType
     });
-    const githubAnalyzer = context_1.GitHubPRAnalyzer.fromContext(appId, appPrivateKey, appInstallationId);
+    const githubAnalyzer = context_1.GitHubPRAnalyzer.fromInteractiveContext(appId, appPrivateKey, appInstallationId);
     // Extract the user's question/request
     const userRequest = comment.replace('@wic-reviewer', '').trim();
     // Load stored context to reduce API costs
