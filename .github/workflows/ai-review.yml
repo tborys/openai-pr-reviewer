@@ -1,0 +1,31 @@
+name: OpenAI PR Reviewer
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    name: AI Code Review
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: OpenAI PR Reviewer
+        uses: ./
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          model: 'gpt-3.5-turbo'
+          review_type: 'comprehensive'
+          max_files: 20
+          exclude_patterns: '*.json,*.md,*.txt,*.lock,*.svg,*.png,*.jpg,*.gif,*.zip,package-lock.json,node_modules/**'
+          max_tokens: 4000
