@@ -69,17 +69,28 @@ export class OpenAIReviewer {
   }
 
   private getSystemPrompt(): string {
-    const basePrompt = `You are an expert code reviewer. Analyze the provided PR changes and provide constructive feedback.
+    const basePrompt = `You are an experienced senior engineer reviewing this pull request as an experienced senior engineer.
 
-Focus on:
-- Code quality and maintainability
-- Security considerations
-- Performance implications
-- Best practices
-- Potential bugs or issues
+**Review Approach:**
+1. Leave a short summary describing:
+   • The purpose of the PR (inferred from code and description)
+   • Whether implementation looks correct and aligns with engineering best practices
+   • Any notable issues or positive highlights
 
-Provide actionable suggestions and be constructive in your feedback.
-Format your response in markdown with clear sections.`;
+2. Focus on code lines that:
+   • Have bugs, logic issues, or potential edge cases
+   • Could benefit from better naming, structure, or performance
+   • Lack clarity, appropriate comments, or type safety
+   • Introduce unnecessary complexity or duplication
+
+**Review Guidelines:**
+- Be concise and constructive
+- Avoid overly subjective preferences unless it's a clear readability/maintainability improvement
+- Assume code is written in production environment by a mid-level engineer
+- Mention areas where tests or documentation are missing if relevant
+- Provide actionable, specific feedback with file/line references when possible
+
+Format your response in markdown with clear sections and end with a practical action items checklist.`;
 
     switch (this.config.reviewType) {
       case 'security':

@@ -151,8 +151,49 @@ async function handleInteractiveMode(openaiApiKey, githubToken, model, reviewTyp
             .filter(pattern => pattern.length > 0);
         prContext = await githubAnalyzer.getPRContext(maxFiles, excludePatterns);
     }
-    // Generate response based on user request and PR context
-    const response = await reviewer.handleInteractiveQuery(userRequest, prContext);
+    // Check if user is requesting a comprehensive review
+    const reviewKeywords = ['take a look', 'review this', 'review the pr', 'what do you think', 'analyze this', 'check this'];
+    const isRequestingReview = reviewKeywords.some(keyword => userRequest.toLowerCase().includes(keyword.toLowerCase()));
+    let response;
+    if (isRequestingReview && prContext) {
+        core.info('User requesting comprehensive review, generating full analysis with inline comments');
+        // Use the enhanced reviewer for comprehensive analysis
+        const enhancedReviewer = new client_1.OpenAIReviewer(openaiApiKey, {
+            model,
+            maxTokens,
+            temperature: 0.1,
+            reviewType: 'comprehensive'
+        });
+        // Generate comprehensive review with inline comments
+        const { generalReview, inlineComments } = await enhancedReviewer.reviewPRWithInlineComments(prContext);
+        // Format response as comprehensive review with todo checklist
+        response = `# 🔍 Comprehensive PR Review
+
+${generalReview}
+
+## ✅ Action Items Checklist
+
+Based on this review, here are the key items to address:
+
+- [ ] **Security**: Review any hardcoded values or sensitive data exposure
+- [ ] **Error Handling**: Ensure all edge cases and error scenarios are handled
+- [ ] **Type Safety**: Add missing type annotations and fix any type issues
+- [ ] **Testing**: Add unit tests for new functionality
+- [ ] **Documentation**: Update documentation for any API changes
+- [ ] **Performance**: Address any performance concerns identified
+- [ ] **Code Quality**: Refactor any complex or unclear code sections
+
+*Check off items as you address them in subsequent commits.*`;
+        // Post inline comments if any were generated
+        if (inlineComments.length > 0) {
+            core.info(`Posting ${inlineComments.length} inline comments for comprehensive review`);
+            await githubAnalyzer.postInlineComments(inlineComments);
+        }
+    }
+    else {
+        // Handle as simple Q&A
+        response = await reviewer.handleInteractiveQuery(userRequest, prContext);
+    }
     // Post response as a comment reply
     await githubAnalyzer.postComment(`## 🤖 Interactive Response
 

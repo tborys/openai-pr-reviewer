@@ -363,8 +363,49 @@ async function handleInteractiveMode(openaiApiKey, githubToken, model, reviewTyp
             .filter(pattern => pattern.length > 0);
         prContext = await githubAnalyzer.getPRContext(maxFiles, excludePatterns);
     }
-    // Generate response based on user request and PR context
-    const response = await reviewer.handleInteractiveQuery(userRequest, prContext);
+    // Check if user is requesting a comprehensive review
+    const reviewKeywords = ['take a look', 'review this', 'review the pr', 'what do you think', 'analyze this', 'check this'];
+    const isRequestingReview = reviewKeywords.some(keyword => userRequest.toLowerCase().includes(keyword.toLowerCase()));
+    let response;
+    if (isRequestingReview && prContext) {
+        core.info('User requesting comprehensive review, generating full analysis with inline comments');
+        // Use the enhanced reviewer for comprehensive analysis
+        const enhancedReviewer = new client_1.OpenAIReviewer(openaiApiKey, {
+            model,
+            maxTokens,
+            temperature: 0.1,
+            reviewType: 'comprehensive'
+        });
+        // Generate comprehensive review with inline comments
+        const { generalReview, inlineComments } = await enhancedReviewer.reviewPRWithInlineComments(prContext);
+        // Format response as comprehensive review with todo checklist
+        response = `# 🔍 Comprehensive PR Review
+
+${generalReview}
+
+## ✅ Action Items Checklist
+
+Based on this review, here are the key items to address:
+
+- [ ] **Security**: Review any hardcoded values or sensitive data exposure
+- [ ] **Error Handling**: Ensure all edge cases and error scenarios are handled
+- [ ] **Type Safety**: Add missing type annotations and fix any type issues
+- [ ] **Testing**: Add unit tests for new functionality
+- [ ] **Documentation**: Update documentation for any API changes
+- [ ] **Performance**: Address any performance concerns identified
+- [ ] **Code Quality**: Refactor any complex or unclear code sections
+
+*Check off items as you address them in subsequent commits.*`;
+        // Post inline comments if any were generated
+        if (inlineComments.length > 0) {
+            core.info(`Posting ${inlineComments.length} inline comments for comprehensive review`);
+            await githubAnalyzer.postInlineComments(inlineComments);
+        }
+    }
+    else {
+        // Handle as simple Q&A
+        response = await reviewer.handleInteractiveQuery(userRequest, prContext);
+    }
     // Post response as a comment reply
     await githubAnalyzer.postComment(`## 🤖 Interactive Response
 
@@ -459,17 +500,28 @@ class OpenAIReviewer {
         ];
     }
     getSystemPrompt() {
-        const basePrompt = `You are an expert code reviewer. Analyze the provided PR changes and provide constructive feedback.
+        const basePrompt = `You are an experienced senior engineer reviewing this pull request as an experienced senior engineer.
 
-Focus on:
-- Code quality and maintainability
-- Security considerations
-- Performance implications
-- Best practices
-- Potential bugs or issues
+**Review Approach:**
+1. Leave a short summary describing:
+   • The purpose of the PR (inferred from code and description)
+   • Whether implementation looks correct and aligns with engineering best practices
+   • Any notable issues or positive highlights
 
-Provide actionable suggestions and be constructive in your feedback.
-Format your response in markdown with clear sections.`;
+2. Focus on code lines that:
+   • Have bugs, logic issues, or potential edge cases
+   • Could benefit from better naming, structure, or performance
+   • Lack clarity, appropriate comments, or type safety
+   • Introduce unnecessary complexity or duplication
+
+**Review Guidelines:**
+- Be concise and constructive
+- Avoid overly subjective preferences unless it's a clear readability/maintainability improvement
+- Assume code is written in production environment by a mid-level engineer
+- Mention areas where tests or documentation are missing if relevant
+- Provide actionable, specific feedback with file/line references when possible
+
+Format your response in markdown with clear sections and end with a practical action items checklist.`;
         switch (this.config.reviewType) {
             case 'security':
                 return basePrompt + `\n\nPay special attention to:
