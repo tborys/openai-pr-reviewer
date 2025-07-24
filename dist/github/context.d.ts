@@ -1,8 +1,8 @@
 import { PRContext } from '../openai/client';
 export interface GitHubConfig {
-    appId: string;
+    appId: number;
     appPrivateKey: string;
-    appInstallationId: string;
+    appInstallationId: number;
     owner: string;
     repo: string;
     pullNumber: number;

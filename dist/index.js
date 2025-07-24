@@ -14,6 +14,12 @@ const rest_1 = __nccwpck_require__(5772);
 class GitHubPRAnalyzer {
     constructor(config) {
         this.config = config;
+        console.log('GitHub App Config:', {
+            appId: config.appId,
+            hasPrivateKey: !!config.appPrivateKey,
+            installationId: config.appInstallationId,
+            privateKeyPrefix: config.appPrivateKey?.substring(0, 50)
+        });
         // Create GitHub App authentication
         const auth = (0, auth_app_1.createAppAuth)({
             appId: config.appId,
@@ -31,9 +37,9 @@ class GitHubPRAnalyzer {
             throw new Error('This action must be triggered by a pull request event');
         }
         return new GitHubPRAnalyzer({
-            appId,
+            appId: parseInt(appId, 10),
             appPrivateKey,
-            appInstallationId,
+            appInstallationId: parseInt(appInstallationId, 10),
             owner: github_1.context.repo.owner,
             repo: github_1.context.repo.repo,
             pullNumber: pullRequest.number,

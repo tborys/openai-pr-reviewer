@@ -4,9 +4,9 @@ import { Octokit } from '@octokit/rest';
 import { PRContext } from '../openai/client';
 
 export interface GitHubConfig {
-  appId: string;
+  appId: number;
   appPrivateKey: string;
-  appInstallationId: string;
+  appInstallationId: number;
   owner: string;
   repo: string;
   pullNumber: number;
@@ -18,6 +18,13 @@ export class GitHubPRAnalyzer {
 
   constructor(config: GitHubConfig) {
     this.config = config;
+    
+    console.log('GitHub App Config:', {
+      appId: config.appId,
+      hasPrivateKey: !!config.appPrivateKey,
+      installationId: config.appInstallationId,
+      privateKeyPrefix: config.appPrivateKey?.substring(0, 50)
+    });
     
     // Create GitHub App authentication
     const auth = createAppAuth({
@@ -40,9 +47,9 @@ export class GitHubPRAnalyzer {
     }
 
     return new GitHubPRAnalyzer({
-      appId,
+      appId: parseInt(appId, 10),
       appPrivateKey,
-      appInstallationId,
+      appInstallationId: parseInt(appInstallationId, 10),
       owner: context.repo.owner,
       repo: context.repo.repo,
       pullNumber: pullRequest.number,
