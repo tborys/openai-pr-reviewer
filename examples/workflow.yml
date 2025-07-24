@@ -65,7 +65,7 @@ jobs:
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          model: 'gpt-3.5-turbo'
+          model: 'gpt-4o-mini'
           review_type: 'style'
           exclude_patterns: '*.json,*.md,*.txt,*.lock,*.svg,*.png,*.jpg,*.gif,*.test.js,*.spec.js'
           max_files: 25
