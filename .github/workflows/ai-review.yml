@@ -2,7 +2,9 @@ name: OpenAI PR Reviewer
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened]  # Only trigger on PR creation, not every push
+  issue_comment:
+    types: [created]  # Enable interactive mode
 
 permissions:
   contents: read
@@ -11,6 +13,7 @@ permissions:
 
 jobs:
   ai-review:
+    if: github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@wic-reviewer'))
     runs-on: ubuntu-latest
     name: AI Code Review
     steps:
@@ -24,8 +27,8 @@ jobs:
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          model: 'gpt-3.5-turbo'
+          model: 'gpt-4o-mini'  # Updated to use GPT-4o-mini with 128k context
           review_type: 'comprehensive'
-          max_files: 20
-          exclude_patterns: '*.json,*.md,*.txt,*.lock,*.svg,*.png,*.jpg,*.gif,*.zip,package-lock.json,node_modules/**'
+          max_files: 10
+          exclude_patterns: '*.json,*.md,*.txt,*.lock,*.svg,*.png,*.jpg,*.gif,*.zip,package-lock.json,node_modules/**,dist/*,*.d.ts,*.js.map'
           max_tokens: 4000

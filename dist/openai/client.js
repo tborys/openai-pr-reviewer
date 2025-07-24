@@ -117,14 +117,21 @@ ${file.patch}
         return inlineComments;
     }
     async analyzeFileForInlineComments(file) {
-        const prompt = `Analyze this code diff and identify specific lines that need inline comments.
-Focus on:
-- Security vulnerabilities
-- Performance issues
-- Bugs or logic errors
-- Code quality improvements
+        const prompt = `Analyze this code diff and identify specific lines that need detailed inline comments.
 
-Return a JSON array of objects with format: [{"line": number, "comment": "specific issue"}]
+Focus on identifying:
+- Security vulnerabilities (SQL injection, XSS, hardcoded secrets, etc.)
+- Performance issues (inefficient loops, memory leaks, algorithmic complexity)
+- Bugs or logic errors (null pointer risks, incorrect conditionals, edge cases)
+- Code quality improvements (naming conventions, maintainability, best practices)
+
+For each issue found, provide:
+1. Clear explanation of the problem
+2. Specific impact or risk
+3. Concrete suggestion for improvement
+
+Return a JSON array with format: [{"line": number, "comment": "Detailed explanation of the issue and suggested fix"}]
+Make comments 2-3 sentences when appropriate. Be specific and actionable.
 Only include significant issues that warrant inline comments.
 
 File: ${file.filename}
