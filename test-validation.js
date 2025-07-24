@@ -1,6 +1,7 @@
 // Test file to validate GPT-4o-mini fixes
 // This should successfully trigger the OpenAI PR Reviewer with 128k context
 // Testing consolidated workflow validation - ensures only one workflow runs
+// Testing GitHub App authentication integration
 
 function validateFeatures() {
     // Test basic functionality
@@ -42,4 +43,22 @@ function testConsolidatedWorkflow() {
     return "Single workflow validation complete";
 }
 
-module.exports = { validateFeatures, testConsolidatedWorkflow };
+function testGitHubAppAuth() {
+    // This function tests GitHub App authentication
+    console.log("Testing GitHub App authentication with @octokit/auth-app");
+    
+    // Test scenarios for GitHub App auth
+    const authScenarios = [
+        "App installation authentication",
+        "PR context fetching with app permissions",
+        "Inline comment posting with app credentials",
+        "Interactive mode with @wic-reviewer mentions"
+    ];
+    
+    return {
+        status: "GitHub App auth test ready",
+        scenarios: authScenarios
+    };
+}
+
+module.exports = { validateFeatures, testConsolidatedWorkflow, testGitHubAppAuth };
