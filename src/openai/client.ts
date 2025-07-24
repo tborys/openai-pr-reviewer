@@ -23,6 +23,12 @@ export interface PRContext {
   author: string;
 }
 
+export interface InlineComment {
+  filename: string;
+  line: number;
+  comment: string;
+}
+
 export class OpenAIReviewer {
   private client: OpenAI;
   private config: ReviewConfig;
@@ -134,6 +140,120 @@ ${file.patch}
     }
 
     return prompt;
+  }
+
+  async reviewPRWithInlineComments(context: PRContext): Promise<{
+    generalReview: string;
+    inlineComments: InlineComment[];
+  }> {
+    // First, generate general review
+    const generalReview = await this.reviewPR(context);
+    
+    // Then generate inline comments for specific issues
+    const inlineComments = await this.generateInlineComments(context);
+    
+    return { generalReview, inlineComments };
+  }
+
+  private async generateInlineComments(context: PRContext): Promise<InlineComment[]> {
+    const inlineComments: InlineComment[] = [];
+    
+    for (const file of context.files) {
+      const fileComments = await this.analyzeFileForInlineComments(file);
+      inlineComments.push(...fileComments);
+    }
+    
+    return inlineComments;
+  }
+
+  private async analyzeFileForInlineComments(file: {
+    filename: string;
+    content: string;
+    patch: string;
+    additions: number;
+    deletions: number;
+  }): Promise<InlineComment[]> {
+    const prompt = `Analyze this code diff and identify specific lines that need inline comments.
+Focus on:
+- Security vulnerabilities
+- Performance issues
+- Bugs or logic errors
+- Code quality improvements
+
+Return a JSON array of objects with format: [{"line": number, "comment": "specific issue"}]
+Only include significant issues that warrant inline comments.
+
+File: ${file.filename}
+Diff:
+\`\`\`diff
+${file.patch}
+\`\`\``;
+
+    try {
+      const response = await this.client.chat.completions.create({
+        model: this.config.model,
+        messages: [
+          { role: 'system', content: 'You are a code reviewer. Return only valid JSON array for inline comments.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 1000,
+      });
+
+      const content = response.choices[0]?.message?.content || '[]';
+      const parsedComments = this.parseInlineComments(content);
+      
+      return parsedComments.map(comment => ({
+        filename: file.filename,
+        line: comment.line,
+        comment: comment.comment
+      }));
+    } catch (error) {
+      console.error('Failed to generate inline comments:', error);
+      return [];
+    }
+  }
+
+  private parseInlineComments(content: string): Array<{ line: number; comment: string }> {
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to parse inline comments JSON:', error);
+      return [];
+    }
+  }
+
+  async handleInteractiveQuery(userRequest: string, storedContext: PRContext | null): Promise<string> {
+    const systemPrompt = `You are an AI code reviewer in interactive mode. A user is asking a question about a pull request.
+    
+Use the stored PR context (if available) to provide specific, accurate answers.
+Be concise but helpful. Reference specific files or code when relevant.`;
+
+    const contextSummary = storedContext ? 
+      `PR Context: ${storedContext.title}\nFiles: ${storedContext.files.map(f => f.filename).join(', ')}` : 
+      'No stored context available.';
+
+    try {
+      const response = await this.client.chat.completions.create({
+        model: this.config.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `${contextSummary}\n\nUser question: ${userRequest}` }
+        ],
+        temperature: 0.1,
+        max_tokens: 800,
+      });
+
+      return response.choices[0]?.message?.content || 'Unable to process your request.';
+    } catch (error) {
+      console.error('Interactive query failed:', error);
+      return 'Sorry, I encountered an error processing your request.';
+    }
   }
 
   async testConnection(): Promise<boolean> {

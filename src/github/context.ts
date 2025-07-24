@@ -144,4 +144,70 @@ export class GitHubPRAnalyzer {
       review.body?.includes('🤖 OpenAI PR Review')
     );
   }
+
+  async postInlineComments(inlineComments: Array<{ filename: string; line: number; comment: string }>): Promise<void> {
+    const reviewComments = inlineComments.map(comment => ({
+      path: comment.filename,
+      line: comment.line,
+      body: comment.comment,
+      side: 'RIGHT' as const,
+    }));
+
+    if (reviewComments.length > 0) {
+      await this.octokit.rest.pulls.createReview({
+        owner: this.config.owner,
+        repo: this.config.repo,
+        pull_number: this.config.pullNumber,
+        body: '🤖 OpenAI PR Review - Inline Comments',
+        event: 'COMMENT',
+        comments: reviewComments,
+      });
+    }
+  }
+
+  async storeReviewContext(context: PRContext): Promise<void> {
+    // Store context as a comment with a special marker for future retrieval
+    const contextData = JSON.stringify({
+      timestamp: new Date().toISOString(),
+      context: {
+        title: context.title,
+        description: context.description,
+        files: context.files.map(f => ({
+          filename: f.filename,
+          additions: f.additions,
+          deletions: f.deletions
+        }))
+      }
+    });
+
+    await this.octokit.rest.issues.createComment({
+      owner: this.config.owner,
+      repo: this.config.repo,
+      issue_number: this.config.pullNumber,
+      body: `<!-- OPENAI_PR_CONTEXT:${Buffer.from(contextData).toString('base64')} -->`,
+    });
+  }
+
+  async loadReviewContext(): Promise<PRContext | null> {
+    try {
+      const { data: comments } = await this.octokit.rest.issues.listComments({
+        owner: this.config.owner,
+        repo: this.config.repo,
+        issue_number: this.config.pullNumber,
+      });
+
+      // Find the most recent context comment
+      for (const comment of comments.reverse()) {
+        const match = comment.body?.match(/<!-- OPENAI_PR_CONTEXT:([A-Za-z0-9+/=]+) -->/);
+        if (match) {
+          const contextData = JSON.parse(Buffer.from(match[1], 'base64').toString('utf-8'));
+          return contextData.context;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load review context:', error);
+    }
+    
+    return null;
+  }
 }
