@@ -16,5 +16,12 @@ export declare class GitHubPRAnalyzer {
     private shouldExcludeFile;
     private truncateContent;
     checkExistingReviews(): Promise<boolean>;
+    postInlineComments(inlineComments: Array<{
+        filename: string;
+        line: number;
+        comment: string;
+    }>): Promise<void>;
+    storeReviewContext(context: PRContext): Promise<void>;
+    loadReviewContext(): Promise<PRContext | null>;
 }
 //# sourceMappingURL=context.d.ts.map

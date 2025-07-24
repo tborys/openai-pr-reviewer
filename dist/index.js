@@ -120,6 +120,66 @@ class GitHubPRAnalyzer {
         return reviews.some(review => review.user?.login === 'github-actions[bot]' ||
             review.body?.includes('🤖 OpenAI PR Review'));
     }
+    async postInlineComments(inlineComments) {
+        const reviewComments = inlineComments.map(comment => ({
+            path: comment.filename,
+            line: comment.line,
+            body: comment.comment,
+            side: 'RIGHT',
+        }));
+        if (reviewComments.length > 0) {
+            await this.octokit.rest.pulls.createReview({
+                owner: this.config.owner,
+                repo: this.config.repo,
+                pull_number: this.config.pullNumber,
+                body: '🤖 OpenAI PR Review - Inline Comments',
+                event: 'COMMENT',
+                comments: reviewComments,
+            });
+        }
+    }
+    async storeReviewContext(context) {
+        // Store context as a comment with a special marker for future retrieval
+        const contextData = JSON.stringify({
+            timestamp: new Date().toISOString(),
+            context: {
+                title: context.title,
+                description: context.description,
+                files: context.files.map(f => ({
+                    filename: f.filename,
+                    additions: f.additions,
+                    deletions: f.deletions
+                }))
+            }
+        });
+        await this.octokit.rest.issues.createComment({
+            owner: this.config.owner,
+            repo: this.config.repo,
+            issue_number: this.config.pullNumber,
+            body: `<!-- OPENAI_PR_CONTEXT:${Buffer.from(contextData).toString('base64')} -->`,
+        });
+    }
+    async loadReviewContext() {
+        try {
+            const { data: comments } = await this.octokit.rest.issues.listComments({
+                owner: this.config.owner,
+                repo: this.config.repo,
+                issue_number: this.config.pullNumber,
+            });
+            // Find the most recent context comment
+            for (const comment of comments.reverse()) {
+                const match = comment.body?.match(/<!-- OPENAI_PR_CONTEXT:([A-Za-z0-9+/=]+) -->/);
+                if (match) {
+                    const contextData = JSON.parse(Buffer.from(match[1], 'base64').toString('utf-8'));
+                    return contextData.context;
+                }
+            }
+        }
+        catch (error) {
+            console.warn('Failed to load review context:', error);
+        }
+        return null;
+    }
 }
 exports.GitHubPRAnalyzer = GitHubPRAnalyzer;
 //# sourceMappingURL=context.js.map
@@ -167,6 +227,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = run;
 const core = __importStar(__nccwpck_require__(7484));
+const github = __importStar(__nccwpck_require__(3228));
 const client_1 = __nccwpck_require__(169);
 const context_1 = __nccwpck_require__(1758);
 async function run() {
@@ -182,6 +243,13 @@ async function run() {
             .map(pattern => pattern.trim())
             .filter(pattern => pattern.length > 0);
         const maxTokens = parseInt(core.getInput('max_tokens') || '4000', 10);
+        // Determine if this is an interactive comment or PR review
+        const context = github.context;
+        const isInteractiveMode = context.eventName === 'issue_comment';
+        if (isInteractiveMode) {
+            await handleInteractiveMode(openaiApiKey, githubToken, model, reviewType, maxTokens);
+            return;
+        }
         core.info(`Starting OpenAI PR Review with model: ${model}, type: ${reviewType}`);
         // Configure OpenAI reviewer
         const reviewConfig = {
@@ -218,13 +286,20 @@ async function run() {
             await githubAnalyzer.postComment('🤖 **OpenAI PR Review**\n\nNo files to review based on the current filters and exclusions.');
             return;
         }
-        // Generate review
+        // Generate review with inline comments
         core.info('Generating AI review...');
-        const review = await reviewer.reviewPR(prContext);
-        // Format and post review
-        const formattedReview = formatReview(review, reviewConfig, prContext.files.length);
-        core.info('Posting review to GitHub...');
+        const { generalReview, inlineComments } = await reviewer.reviewPRWithInlineComments(prContext);
+        // Post general review
+        const formattedReview = formatReview(generalReview, reviewConfig, prContext.files.length);
+        core.info('Posting general review to GitHub...');
         await githubAnalyzer.postComment(formattedReview);
+        // Post inline comments
+        if (inlineComments.length > 0) {
+            core.info(`Posting ${inlineComments.length} inline comments...`);
+            await githubAnalyzer.postInlineComments(inlineComments);
+        }
+        // Store context for future interactive sessions
+        await githubAnalyzer.storeReviewContext(prContext);
         core.info('✅ PR review completed successfully');
     }
     catch (error) {
@@ -232,6 +307,41 @@ async function run() {
         core.error(`PR review failed: ${errorMessage}`);
         core.setFailed(errorMessage);
     }
+}
+async function handleInteractiveMode(openaiApiKey, githubToken, model, reviewType, maxTokens) {
+    const context = github.context;
+    // Check if comment mentions @wic-reviewer
+    const comment = context.payload.comment?.body || '';
+    if (!comment.includes('@wic-reviewer')) {
+        core.info('Comment does not mention @wic-reviewer, skipping...');
+        return;
+    }
+    // Only respond to comments on PRs
+    if (!context.payload.issue?.pull_request) {
+        core.info('Comment is not on a PR, skipping...');
+        return;
+    }
+    core.info('Interactive mode triggered by @wic-reviewer mention');
+    const reviewer = new client_1.OpenAIReviewer(openaiApiKey, {
+        model,
+        maxTokens,
+        temperature: 0.1,
+        reviewType: reviewType
+    });
+    const githubAnalyzer = context_1.GitHubPRAnalyzer.fromContext(githubToken);
+    // Extract the user's question/request
+    const userRequest = comment.replace('@wic-reviewer', '').trim();
+    // Load stored context to reduce API costs
+    const storedContext = await githubAnalyzer.loadReviewContext();
+    // Generate response based on user request and stored context
+    const response = await reviewer.handleInteractiveQuery(userRequest, storedContext);
+    // Post response as a comment reply
+    await githubAnalyzer.postComment(`## 🤖 Interactive Response
+
+${response}
+
+---
+<sub>Generated by [OpenAI PR Reviewer](https://github.com/tborys/openai-pr-reviewer) • Interactive mode</sub>`);
 }
 function formatReview(review, config, fileCount) {
     const timestamp = new Date().toISOString();
@@ -382,6 +492,99 @@ ${file.patch}
 `;
         }
         return prompt;
+    }
+    async reviewPRWithInlineComments(context) {
+        // First, generate general review
+        const generalReview = await this.reviewPR(context);
+        // Then generate inline comments for specific issues
+        const inlineComments = await this.generateInlineComments(context);
+        return { generalReview, inlineComments };
+    }
+    async generateInlineComments(context) {
+        const inlineComments = [];
+        for (const file of context.files) {
+            const fileComments = await this.analyzeFileForInlineComments(file);
+            inlineComments.push(...fileComments);
+        }
+        return inlineComments;
+    }
+    async analyzeFileForInlineComments(file) {
+        const prompt = `Analyze this code diff and identify specific lines that need inline comments.
+Focus on:
+- Security vulnerabilities
+- Performance issues
+- Bugs or logic errors
+- Code quality improvements
+
+Return a JSON array of objects with format: [{"line": number, "comment": "specific issue"}]
+Only include significant issues that warrant inline comments.
+
+File: ${file.filename}
+Diff:
+\`\`\`diff
+${file.patch}
+\`\`\``;
+        try {
+            const response = await this.client.chat.completions.create({
+                model: this.config.model,
+                messages: [
+                    { role: 'system', content: 'You are a code reviewer. Return only valid JSON array for inline comments.' },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.1,
+                max_tokens: 1000,
+            });
+            const content = response.choices[0]?.message?.content || '[]';
+            const parsedComments = this.parseInlineComments(content);
+            return parsedComments.map(comment => ({
+                filename: file.filename,
+                line: comment.line,
+                comment: comment.comment
+            }));
+        }
+        catch (error) {
+            console.error('Failed to generate inline comments:', error);
+            return [];
+        }
+    }
+    parseInlineComments(content) {
+        try {
+            // Try to extract JSON from the response
+            const jsonMatch = content.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            }
+            return [];
+        }
+        catch (error) {
+            console.error('Failed to parse inline comments JSON:', error);
+            return [];
+        }
+    }
+    async handleInteractiveQuery(userRequest, storedContext) {
+        const systemPrompt = `You are an AI code reviewer in interactive mode. A user is asking a question about a pull request.
+    
+Use the stored PR context (if available) to provide specific, accurate answers.
+Be concise but helpful. Reference specific files or code when relevant.`;
+        const contextSummary = storedContext ?
+            `PR Context: ${storedContext.title}\nFiles: ${storedContext.files.map(f => f.filename).join(', ')}` :
+            'No stored context available.';
+        try {
+            const response = await this.client.chat.completions.create({
+                model: this.config.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `${contextSummary}\n\nUser question: ${userRequest}` }
+                ],
+                temperature: 0.1,
+                max_tokens: 800,
+            });
+            return response.choices[0]?.message?.content || 'Unable to process your request.';
+        }
+        catch (error) {
+            console.error('Interactive query failed:', error);
+            return 'Sorry, I encountered an error processing your request.';
+        }
     }
     async testConnection() {
         try {
