@@ -1,0 +1,71 @@
+# Example GitHub Actions workflow for OpenAI PR Reviewer
+# Place this file in .github/workflows/ai-review.yml
+
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # Optionally limit to specific branches
+    # branches: [ main, develop ]
+
+jobs:
+  comprehensive-review:
+    name: Comprehensive AI Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: OpenAI PR Reviewer
+        uses: tborys/openai-pr-reviewer@v1
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          model: 'gpt-4o'
+          review_type: 'comprehensive'
+          max_files: 15
+          exclude_patterns: '*.json,*.md,*.txt,*.lock,*.svg,*.png,*.jpg,*.gif,package-lock.json'
+
+  # Example: Security-focused review for sensitive files
+  security-review:
+    name: Security Review
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files.*.filename, 'auth') || contains(github.event.pull_request.changed_files.*.filename, 'security')
+    steps:
+      - name: Security-focused OpenAI Review
+        uses: tborys/openai-pr-reviewer@v1
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          model: 'gpt-4'
+          review_type: 'security'
+          max_files: 20
+
+  # Example: Performance review for backend changes
+  performance-review:
+    name: Performance Review
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files.*.filename, 'api/') || contains(github.event.pull_request.changed_files.*.filename, 'server/')
+    steps:
+      - name: Performance-focused OpenAI Review
+        uses: tborys/openai-pr-reviewer@v1
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          model: 'gpt-4o'
+          review_type: 'performance'
+          max_tokens: 6000
+
+  # Example: Style review with custom exclusions
+  style-review:
+    name: Code Style Review
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Style-focused OpenAI Review
+        uses: tborys/openai-pr-reviewer@v1
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          model: 'gpt-3.5-turbo'
+          review_type: 'style'
+          exclude_patterns: '*.json,*.md,*.txt,*.lock,*.svg,*.png,*.jpg,*.gif,*.test.js,*.spec.js'
+          max_files: 25

@@ -1,0 +1,40 @@
+name: 'OpenAI PR Reviewer'
+description: 'OpenAI-powered GitHub PR reviewer that provides intelligent code review feedback'
+author: 'Tomasz Borys'
+
+inputs:
+  openai_api_key:
+    description: 'OpenAI API key'
+    required: true
+  model:
+    description: 'OpenAI model to use'
+    required: false
+    default: 'gpt-4o'
+  github_token:
+    description: 'GitHub token for API access'
+    required: true
+    default: ${{ github.token }}
+  review_type:
+    description: 'Type of review: comprehensive, security, performance, style'
+    required: false
+    default: 'comprehensive'
+  max_files:
+    description: 'Maximum number of files to review'
+    required: false
+    default: '10'
+  exclude_patterns:
+    description: 'File patterns to exclude from review (comma-separated)'
+    required: false
+    default: '*.json,*.md,*.txt,*.lock,*.svg,*.png,*.jpg,*.gif'
+  max_tokens:
+    description: 'Maximum tokens per API call'
+    required: false
+    default: '4000'
+
+runs:
+  using: 'node20'
+  main: 'dist/main.js'
+
+branding:
+  icon: 'eye'
+  color: 'blue'
