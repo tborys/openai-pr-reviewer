@@ -1,0 +1,118 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GitHubPRAnalyzer = void 0;
+const github_1 = require("@actions/github");
+const github_2 = require("@actions/github");
+class GitHubPRAnalyzer {
+    constructor(config) {
+        this.config = config;
+        this.octokit = (0, github_1.getOctokit)(config.token);
+    }
+    static fromContext(token) {
+        const payload = github_2.context.payload;
+        const pullRequest = payload.pull_request;
+        if (!pullRequest) {
+            throw new Error('This action must be triggered by a pull request event');
+        }
+        return new GitHubPRAnalyzer({
+            token,
+            owner: github_2.context.repo.owner,
+            repo: github_2.context.repo.repo,
+            pullNumber: pullRequest.number,
+        });
+    }
+    async getPRContext(maxFiles = 10, excludePatterns = []) {
+        const { data: pullRequest } = await this.octokit.rest.pulls.get({
+            owner: this.config.owner,
+            repo: this.config.repo,
+            pull_number: this.config.pullNumber,
+        });
+        const { data: files } = await this.octokit.rest.pulls.listFiles({
+            owner: this.config.owner,
+            repo: this.config.repo,
+            pull_number: this.config.pullNumber,
+        });
+        const filteredFiles = files
+            .filter(file => !this.shouldExcludeFile(file.filename, excludePatterns))
+            .slice(0, maxFiles);
+        const processedFiles = await Promise.all(filteredFiles.map(async (file) => {
+            let content = '';
+            if (file.status !== 'removed' && file.contents_url) {
+                try {
+                    const { data: fileContent } = await this.octokit.rest.repos.getContent({
+                        owner: this.config.owner,
+                        repo: this.config.repo,
+                        path: file.filename,
+                        ref: pullRequest.head.sha,
+                    });
+                    if ('content' in fileContent && fileContent.content) {
+                        content = Buffer.from(fileContent.content, 'base64').toString('utf-8');
+                    }
+                }
+                catch (error) {
+                    console.warn(`Failed to fetch content for ${file.filename}:`, error);
+                }
+            }
+            return {
+                filename: file.filename,
+                content: this.truncateContent(content),
+                patch: file.patch || '',
+                additions: file.additions,
+                deletions: file.deletions,
+            };
+        }));
+        return {
+            title: pullRequest.title,
+            description: pullRequest.body || '',
+            files: processedFiles,
+            baseBranch: pullRequest.base.ref,
+            headBranch: pullRequest.head.ref,
+            author: pullRequest.user?.login || 'unknown',
+        };
+    }
+    async postReview(review) {
+        await this.octokit.rest.pulls.createReview({
+            owner: this.config.owner,
+            repo: this.config.repo,
+            pull_number: this.config.pullNumber,
+            body: review,
+            event: 'COMMENT',
+        });
+    }
+    async postComment(comment) {
+        await this.octokit.rest.issues.createComment({
+            owner: this.config.owner,
+            repo: this.config.repo,
+            issue_number: this.config.pullNumber,
+            body: comment,
+        });
+    }
+    shouldExcludeFile(filename, excludePatterns) {
+        return excludePatterns.some(pattern => {
+            // Convert glob pattern to regex
+            const regexPattern = pattern
+                .replace(/\./g, '\\.')
+                .replace(/\*/g, '.*')
+                .replace(/\?/g, '.');
+            return new RegExp(`^${regexPattern}$`).test(filename);
+        });
+    }
+    truncateContent(content, maxLines = 500) {
+        const lines = content.split('\n');
+        if (lines.length <= maxLines) {
+            return content;
+        }
+        return lines.slice(0, maxLines).join('\n') + '\n... [Content truncated]';
+    }
+    async checkExistingReviews() {
+        const { data: reviews } = await this.octokit.rest.pulls.listReviews({
+            owner: this.config.owner,
+            repo: this.config.repo,
+            pull_number: this.config.pullNumber,
+        });
+        return reviews.some(review => review.user?.login === 'github-actions[bot]' ||
+            review.body?.includes('🤖 OpenAI PR Review'));
+    }
+}
+exports.GitHubPRAnalyzer = GitHubPRAnalyzer;
+//# sourceMappingURL=context.js.map
